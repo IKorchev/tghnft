@@ -1,0 +1,29 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins&display=swap");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  .btn-primary {
+    @apply border-gray-800 text-black bg-primary-yellow text-xl border-2 rounded-xl mt-12 py-2 w-48 font-bold shadow-md transition duration-200  hover:shadow-xl hover:bg-black hover:text-primary-yellow hover:border-primary-yellow;
+  }
+
+  a,
+  .usericon {
+    @apply transition duration-200 hover:opacity-50;
+  }
+  th,
+  td {
+    @apply py-2 px-2 text-center rounded-sm bg-gray-800;
+  }
+  .small-scrollbar {
+    @apply scrollbar-thumb-white scrollbar scrollbar-track-bggradient1 scrollbar-thin scrollbar-thumb-rounded-md scrollbar-track-rounded-md;
+  }
+}
+#home {
+  background: linear-gradient(rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.9)),
+    url("../assets/nfts/Group\ 1.png");
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
