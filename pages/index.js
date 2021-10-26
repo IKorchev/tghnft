@@ -1,21 +1,20 @@
 import Mint from "../components/Mint"
-import Image from "../assets/nfts/Group 1.png"
-import BGimage from "../assets/nfts/BG.png"
+import ExampleGIF from "../assets/nfts/example-gif.gif"
 import { DAppProvider } from "@usedapp/core"
-const url = process.env.NEXT_PUBLIC_STREAM_URL
-
+import Footer from "../components/Footer"
 const NFT = () => {
-  const token = ""
+  const token = process.env.TOKEN_ADDRESS
   return (
     <div id='home'>
       <DAppProvider>
-        <div className='py-24 grid items-center relative'>
-          <div className='container mx-auto px-36 font-poppins  text-white z-10'>
-            <div className='flex flex-col justify-center'>
-              <h2 className='text-center text-2xl mt-2'>
-                1000 unique randomly generated and pixelated NFTs on the Polygon Network
-                based on the Original Target Hit Twitch Emote NFT
-              </h2>
+        <div className='py-24 relative'>
+          <div className='container mx-auto lg:px-36 font-poppins  text-white z-10'>
+            <div className='flex flex-col items-center justify-center'>
+              <h1 className='text-center text-2xl mt-2 max-w-[600px]'>
+                1000 unique randomly generated NFTs on the Polygon Network based on the
+                Original Target Hit Twitch Emote NFT
+              </h1>
+
               <h3 className='text-center text-primary-yellow mt-2'>
                 <a
                   className='underline  hover:opacity-80 mx-5'
@@ -28,12 +27,19 @@ const NFT = () => {
                   Target Hit
                 </a>
               </h3>
-              <div className='flex mt-24'>
+              <div className='flex mt-24 flex-col lg:flex-row items-center'>
+                <img
+                  src={ExampleGIF.src}
+                  className='rounded-full border-dashed w-96 h-96 mx-12 shadow-2xl mb-5 lg:mb-0 border-4 border-primary-yellow'
+                />
                 <Mint />
               </div>
             </div>
           </div>
-          <div className='mx-auto mt-24 border-primary-yellow border-4 rounded-lg'>
+          <h1 className='text-primary-yellow text-center px-12 mt-24 text-5xl font-bold'>
+            Watch Target Hit live
+          </h1>
+          <div className='mx-auto mt-24 max-w-[1290px] max-h-[730px] border-primary-yellow border-4 rounded-lg'>
             <iframe
               width='1280'
               height='720'
@@ -44,6 +50,7 @@ const NFT = () => {
               allowFullScreen></iframe>
           </div>
         </div>
+        <Footer />
       </DAppProvider>
     </div>
   )

@@ -1,7 +1,4 @@
-import {
-  useContractCall,
-  useContractFunction,
-} from "@usedapp/core"
+import { useContractCall, useContractFunction } from "@usedapp/core"
 import { abi } from "../abi"
 import { utils, BigNumber } from "ethers"
 import { Contract } from "@ethersproject/contracts"
@@ -36,6 +33,8 @@ export const useContractCost = () => {
   })
   if (cost) {
     const formatted = formatEther(BigNumber.from(cost[0]).toNumber())
+    console.log(formatted)
+
     return {
       cost: formatted,
     }
