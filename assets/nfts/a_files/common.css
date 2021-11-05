@@ -1,0 +1,24 @@
+body {
+	font: 12px arial, sans-serif;
+	color: #000000;
+	background: #faf9fa;
+}
+a:link, a:visited {
+	color: #9976de;
+}
+div {
+	margin: 0px;
+}
+.hidden {
+	display: none !important;
+}
+.center {
+	text-align: center;
+}
+p {
+	margin: 0px;
+}
+.darkmode {
+	color: #b8b5c0;
+	background: #201c2b;
+}

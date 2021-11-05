@@ -27,10 +27,10 @@ const NFT = () => {
                   Target Hit
                 </a>
               </h3>
-              <div className='flex mt-24 flex-col lg:flex-row items-center'>
+              <div className='flex mt-24 flex-col rounded-lg lg:flex-row h-[30rem] items-center border-2 border-primary-yellow'>
                 <img
                   src={ExampleGIF.src}
-                  className='rounded-full border-dashed w-96 h-96 mx-12 shadow-2xl mb-5 lg:mb-0 border-4 border-primary-yellow'
+                  className='rounded-md h-full  shadow-2xl mb-5 lg:mb-0 '
                 />
                 <Mint />
               </div>

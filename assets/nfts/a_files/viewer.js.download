@@ -1,0 +1,428 @@
+"use strict";
+
+// Global variables
+var authToken = '';
+var clientId = '';
+var initialLoadDone = false;
+var lastWebSocketMessageTime = 0;
+var webSocketConTryCount = 0;
+var extIsVisible = true;
+var extMode = 'stats'; // stats | feed
+var feedMaxDisplay = 100;
+
+
+if(window.Twitch.ext) {
+
+	window.Twitch.ext.onAuthorized(function(auth) {
+		authToken = auth.token;
+		clientId = auth.clientId;
+
+		if(getCurrentOptOut() === true) {
+			// Display opt out notice to user
+			toggleOptOutNotice(true);
+		} else {
+			if(initialLoadDone === false) {
+				// Display normal stats to user
+				connectToWs();
+				initialLoadDone = true;
+			}
+		}
+	});
+
+	window.Twitch.ext.onContext(function(context, contextFields) {
+		if(context['theme'] == 'dark') {
+			toggleDarkMode(true);
+		} else if(context['theme'] == 'light') {
+			toggleDarkMode(false);
+		}
+	});
+
+	window.Twitch.ext.onVisibilityChanged(function(isVisible, context) {
+		extIsVisible = isVisible;
+		if(extIsVisible === true && context) {
+			if(context['theme'] == 'dark') {
+				toggleDarkMode(true);
+			} else if(context['theme'] == 'light') {
+				toggleDarkMode(false);
+			}
+		}
+	});
+
+	let pubSubListen = function(target, contentType, message) {
+		if(extIsVisible === true && getCurrentOptOut() === false && target == 'broadcast' && contentType == 'application/json') {
+			parseWebSocketMessage(message);
+		}
+	};
+	window.Twitch.ext.listen('broadcast', pubSubListen);
+
+	$('.optOutToggle').click(function() {
+		if(getCurrentOptOut() === true) {
+			setOptOut(false);
+		} else {
+			setOptOut(true);
+		}
+	});
+
+	$('.tabs-button').click(function() {
+		// Switch modes if the current one isn't the same as the selected
+		if($(this).data('option') != extMode && getCurrentOptOut() === false) {
+			updateExtMode($(this).data('option'));
+		}
+	});
+
+}
+
+function updateExtMode(mode) {
+
+	// Update global var
+	extMode = mode;
+
+	if(mode == 'stats') {
+		// Hide feed
+		$('#feed').addClass('hidden');
+
+		// Show stats
+		$('#stats').removeClass('hidden');
+	} else if (mode == 'feed') {
+		// Hide stats
+		$('#stats').addClass('hidden');
+
+		// Show feed
+		$('#feed').empty();
+		$('#feed').removeClass('hidden');
+	}
+
+	// Send server new extMode
+	if(window.webSocketCon && window.webSocketCon.readyState == 1) {
+		window.webSocketCon.send(JSON.stringify({'command': extMode}));
+	}
+
+}
+
+function webSocketRetryDelay() {
+
+	let delay = (10 + Math.pow(2, webSocketConTryCount));
+
+	if(delay < 10) {
+		delay = 10;
+	} else if (delay > 600) {
+		delay = 600;
+	}
+
+	return Math.floor((delay * 1000) * (getRandomArbitrary(75, 125) / 100.0));
+}
+
+function connectToWs() {
+
+	// Check if we already have a connection, also check if we are connecting or connected
+	if(window.webSocketCon && (window.webSocketCon.readyState == 0 || window.webSocketCon.readyState == 1)) {
+		return;
+	}
+
+	// Create new websocket connection
+	let urlParams = $.QueryString;
+	urlParams.version = extensionVersion;
+	urlParams.token = authToken;
+	window.webSocketCon = new WebSocket('wss://viewer-geolocation.twitch-ext.rootonline.de/ws?' + $.param(urlParams));
+	webSocketConTryCount = webSocketConTryCount + 1;
+
+	// onError
+	window.webSocketCon.onerror = function(error) {
+
+		if(getCurrentOptOut() === false && ($('#stats').hasClass('hidden') === false || $('#feed').hasClass('hidden') === false)) {
+			// Retry connection after x seconds
+			setTimeout(function () { connectToWs(); }, webSocketRetryDelay());
+		}
+
+	};
+
+	// onClose
+	window.webSocketCon.onclose = function() {
+
+		if(getCurrentOptOut() === false && ($('#stats').hasClass('hidden') === false || $('#feed').hasClass('hidden') === false)) {
+			// Retry connection after x seconds
+			setTimeout(function () { connectToWs(); }, webSocketRetryDelay());
+		}
+
+	};
+
+	// onMessage
+	window.webSocketCon.onmessage = function(message) {
+
+		// Save the timestamp of the last received message
+		lastWebSocketMessageTime = Date.now();
+
+		if(extIsVisible === true) {
+			// Split by new line because on high demand one websocket message could have multiple json messages
+			let message_array = message.data.split("\n");
+
+			// Handle each json message
+			$.each(message_array, function(i, e) {
+				parseWebSocketMessage(e);
+			});
+		}
+	};
+
+	// onOpen
+	window.webSocketCon.onopen = function() {
+
+		// Reset webSocketConTryCount
+		webSocketConTryCount = 0;
+
+		// Setup client ping => pong
+		if(window.webSocketPingPong) {
+			clearInterval(window.webSocketPingPong);
+		}
+
+		window.webSocketPingPong = setInterval(wsPingPong, 30000);
+
+		// Send the current extMode to the server
+		window.webSocketCon.send(JSON.stringify({'command': extMode}));
+
+	};
+
+}
+
+function parseWebSocketMessage(message) {
+
+	let json_message = JSON.parse(message);
+	if(json_message.data_type == 'STATS') {
+		// Unmarchal the JSON data
+		let geoRanking = JSON.parse(json_message.data);
+
+		// Update the page accordingly
+		updateStatsPage(geoRanking);
+
+	} else if(json_message.data_type == 'JOIN' || json_message.data_type == 'PART') {
+
+		// Update the page accordingly
+		updateFeedsPage(json_message.data_type, json_message.data);
+
+	} else if(json_message.data_type == 'DISABLE') {
+		toggleDisableNotice(json_message.data);
+	}
+
+}
+
+function wsPingPong() {
+
+	if(window.webSocketCon && window.webSocketCon.readyState == 1 && lastWebSocketMessageTime < (Date.now() - 45000) && extIsVisible === true) {
+		window.webSocketCon.send('{"command":"ping"}');
+	}
+
+}
+
+function updateStatsPage(geoRanking) {
+
+	let html = '';
+	let topX = 254;
+	let flagSizeDefault = '32'; // 16, 24, 32, 48, 64
+	let flagSizeTop1 = '64'; // 16, 24, 32, 48, 64
+	let flagSizeTop2And3 = '48';  // 16, 24, 32, 48, 64
+	let flagSize = '';
+
+	if($('#stats-header').length == 0) {
+		createStatsSkeleton(topX);
+	}
+
+	let topCounter = 0;
+	$.each(geoRanking, function(k, v) {
+		if(topCounter == 0) {
+			flagSize = flagSizeTop1;
+		} else if(topCounter == 1 || topCounter == 2) {
+			flagSize = flagSizeTop2And3;
+		} else {
+			flagSize = flagSizeDefault;
+		}
+
+		// IMG part
+		html = '<img class="flag" src="flags/shiny/' + flagSize + '/' + htmlEncode(k) + '.png" height="' + flagSize + '" width="' + flagSize + '" alt="' + htmlEncode(k) + '" title="' + htmlEncode(getFlagTranslation(k)) + '">';
+		if($('#box' + topCounter +'_img').html() != html) {
+			$('#box' + topCounter +'_img').html(html);
+		}
+
+		// Number part
+		html = htmlEncode(formatNumber(v));
+		if($('#box' + topCounter +'_number').html() != html) {
+			$('#box' + topCounter +'_number').html(html);
+		}
+
+		topCounter++;
+
+		// Stop listing when we have our top x
+		if(topCounter >= topX) {
+			return false;
+		}
+	});
+
+	// Clear boxes for which we don't have any data anymore
+	html = '';
+	for(let i = topCounter; i < topX; i++) {
+		// IMG part
+		if($('#box' + i +'_img').html() != html) {
+			$('#box' + i +'_img').html(html);
+		}
+
+		// Number part
+		if($('#box' + i +'_number').html() != html) {
+			$('#box' + i +'_number').html(html);
+		}
+	}
+
+}
+
+function updateFeedsPage(type, geo) {
+
+	let geoSplit = geo.split(',', 2);
+	if(geoSplit.length > 1) {
+		var timestamp = new Date(parseInt(geoSplit[1]) * 1000);
+	} else {
+		var timestamp = new Date();
+	}
+
+	let html = '<span class="feed-' + htmlEncode(type) + '"></span>';
+	html += ' <img class="flag" src="flags/shiny/32/' + htmlEncode(geoSplit[0]) + '.png" height="32" width="32" alt="' + htmlEncode(geoSplit[0]) + '" title="' + htmlEncode(getFlagTranslation(geoSplit[0])) + '">';
+	html += ' <span class="feed-entry-date">' + timestamp.getFullYear() + '-' + (((timestamp.getMonth()+1) < 10) ? '0' : '') + (timestamp.getMonth()+1) + '-' + ((timestamp.getDate() < 10) ? '0' : '') + timestamp.getDate() + ' ' + ((timestamp.getHours() < 10) ? '0' : '') + timestamp.getHours() + ':' + ((timestamp.getMinutes() < 10) ? '0' : '') + timestamp.getMinutes() + ':' + ((timestamp.getSeconds() < 10) ? '0' : '') + timestamp.getSeconds() + '</span>';
+
+	// Prepend entry
+	$('#feed').prepend('<div class="feed-entry">' + html + '</div>');
+
+	// Remove old entries
+	if($('.feed-entry').length > feedMaxDisplay) {
+		$('.feed-entry').each(function(i, e) {
+			if(i >= feedMaxDisplay) {
+				$(this).remove();
+			}
+		});
+	}
+
+}
+
+function createStatsSkeleton(topX) {
+
+	let html = '';
+	html += '<h2 class="center" id="stats-header">Top current viewer locations</h2>';
+	for(let i = 0; i < topX; i++) {
+		html += '<div class="box" id="box' + i + '"><span id="box' + i + '_img"></span> <b><span id="box' + i + '_number"></span></b></div>';
+	}
+
+	if($('#stats').html() != html) {
+		$('#stats').html(html);
+	}
+
+}
+
+function getFlagTranslation(flag) {
+
+	if($('#flag-translation-' + flag).length != 0) {
+		return $('#flag-translation-' + flag).text();
+	}
+	return '';
+
+}
+
+function setOptOut(disabled) {
+
+	if(disabled === true) {
+		// Set local storage so we remember
+		try {
+			window.localStorage.setItem('viewer-geolocation:optOut', 'True');
+		} catch(e) {}
+
+		// Disable client ping => pong
+		if(window.webSocketPingPong) {
+			clearInterval(window.webSocketPingPong);
+		}
+
+		// Disconnect any existing WS connection
+		if(window.webSocketCon) {
+			window.webSocketCon.close();
+			window.webSocketCon = undefined;
+		}
+
+		// Switch "view"
+		toggleOptOutNotice(true);
+	} else {
+		// Remove local storage entry
+		try {
+			window.localStorage.removeItem('viewer-geolocation:optOut');
+		} catch(e) {}
+
+		// Reload the page to get an Auth event
+		window.location.reload();
+	}
+
+}
+
+function getCurrentOptOut() {
+
+	try {
+		if(window.localStorage.getItem('viewer-geolocation:optOut') == 'True') {
+			return true;
+		}
+	} catch(e) {}
+
+	return false;
+
+}
+
+function toggleOptOutNotice(enabled) {
+
+	if(enabled === true) {
+		$('#optOutNotice').removeClass('hidden');
+		$('#stats').addClass('hidden');
+		$('#feed').addClass('hidden');
+		$('.optOutButton').text('Opt-in');
+	} else {
+		$('#optOutNotice').addClass('hidden');
+		if(extMode == 'stats') {
+			$('#stats').removeClass('hidden');
+		} else if(extMode == 'feed') {
+			$('#feed').empty();
+			$('#feed').removeClass('hidden');
+		}
+		$('.optOutButton').text('Opt-out');
+	}
+
+}
+
+function toggleDisableNotice(message) {
+
+	// Hide stats and feed
+	$('#stats').addClass('hidden');
+	$('#feed').addClass('hidden');
+
+	// Disable client ping => pong
+	if(window.webSocketPingPong) {
+		clearInterval(window.webSocketPingPong);
+	}
+
+	// Disconnect any existing WS connection
+	if(window.webSocketCon) {
+		window.webSocketCon.close();
+		window.webSocketCon = undefined;
+	}
+
+	// Show disabled message
+	$('#disabledNotice').removeClass('hidden');
+
+	// Set custom message if available
+	if(typeof message != 'undefined' && message.length > 0) {
+		$('#disabledNotice').find('h3').text(message);
+	}
+
+}
+
+function toggleDarkMode(enabled) {
+
+	if(enabled === true) {
+		if($('body').hasClass('darkmode') === false) {
+			$('body').addClass('darkmode');
+		}
+	} else {
+		if($('body').hasClass('darkmode') === true) {
+			$('body').removeClass('darkmode');
+		}
+	}
+
+}

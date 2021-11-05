@@ -1,12 +1,11 @@
-import { useContractCall, useContractFunction } from "@usedapp/core"
+import { useContractCall, useContractFunction, useEthers } from "@usedapp/core"
 import { abi } from "../abi"
 import { utils, BigNumber } from "ethers"
 import { Contract } from "@ethersproject/contracts"
 import { formatEther } from "@ethersproject/units"
 const cInterface = new utils.Interface(abi)
-const contractAddress = "0x419ae022948a917bD3B0e79B790434487e308Fe6"
+export const contractAddress = "0x419ae022948a917bD3B0e79B790434487e308Fe6"
 const contract = new Contract(contractAddress, cInterface)
-
 //Gets the total supply of the token
 export const useTotalSupply = () => {
   const supply = useContractCall({
@@ -36,14 +35,16 @@ export const useContractCost = () => {
     console.log(formatted)
 
     return {
-      cost: formatted,
+      rawCost: cost,
+      formattedCost: formatted,
     }
   }
   return 0
 }
 
 // Calls contract function
-export function useContractMethod(methodName) {
-  const { state, send } = useContractFunction(contract, methodName, {})
-  return { state, send }
+
+export function useContractMethod(methodName, options) {
+  const { state, send, events } = useContractFunction(contract, methodName, options)
+  return { state, send, events }
 }

@@ -1,0 +1,49 @@
+"use strict";
+
+// Global variables
+var extensionVersion = '1.0.0';
+
+function htmlEncode(value) {
+	return $('<div/>').text(value).html();
+}
+
+function htmlDecode(value) {
+	return $('<div/>').html(value).text();
+}
+
+function formatNumber(nStr) {
+	nStr += '';
+	let x = nStr.split('.');
+	let x1 = x[0];
+	let x2 = x.length > 1 ? '.' + x[1] : '';
+	let rgx = /(\d+)(\d{3})/;
+	while(rgx.test(x1)) {
+		x1 = x1.replace(rgx, '$1' + ',' + '$2');
+	}
+
+	return x1 + x2;
+}
+
+function getRandomArbitrary(min, max) {
+	return Math.random() * (max - min) + min;
+}
+
+function getRandomInt(min, max) {
+	return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+(function($) {
+	$.QueryString = (function(paramsArray) {
+		let params = {};
+
+		for(let i = 0; i < paramsArray.length; ++i) {
+			let param = paramsArray[i].split('=', 2);
+
+			if(param.length !== 2) continue;
+
+			params[param[0]] = decodeURIComponent(param[1].replace(/\+/g, ' '));
+		}
+
+		return params;
+	})(window.location.search.substr(1).split('&'))
+})(jQuery);

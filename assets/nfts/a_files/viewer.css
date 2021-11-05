@@ -1,0 +1,119 @@
+.flag {
+	vertical-align: middle;
+}
+.box {
+	height: 100%;
+	width: 33%;
+	text-align: center;
+}
+#box0 {
+	width: 100%;
+}
+#box1, #box2 {
+	width: 50%;
+}
+.optOutButtonToggle {
+	position: fixed;
+	right: 0;
+	bottom: 17px;
+}
+.optOutButton {
+	font-size: 10px;
+	border: 1px solid #ced4da;
+	border-radius: .25rem;
+	transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+	outline: none;
+}
+.loader, .loader:after {
+	border-radius: 50%;
+	width: 5em;
+	height: 5em;
+}
+.loader {
+	margin: 60px auto;
+	font-size: 10px;
+	position: relative;
+	text-indent: -9999em;
+	border-top: 0.7em solid rgba(0,0,0, 0.2);
+	border-right: 0.7em solid rgba(0,0,0, 0.2);
+	border-bottom: 0.7em solid rgba(0,0,0, 0.2);
+	border-left: 0.7em solid #000000;
+	-webkit-transform: translateZ(0);
+	-ms-transform: translateZ(0);
+	transform: translateZ(0);
+	-webkit-animation: loading 0.8s infinite linear;
+	animation: loading 0.8s infinite linear;
+}
+@-webkit-keyframes loading {
+	0% {
+		-webkit-transform: rotate(0deg);
+		transform: rotate(0deg);
+	}
+	100% {
+		-webkit-transform: rotate(360deg);
+		transform: rotate(360deg);
+	}
+}
+@keyframes loading {
+	0% {
+		-webkit-transform: rotate(0deg);
+		transform: rotate(0deg);
+	}
+	100% {
+		-webkit-transform: rotate(360deg);
+		transform: rotate(360deg);
+	}
+}
+#tabs {
+	position: fixed;
+	bottom: 0;
+	width: 100%;
+	padding-top: 2px;
+	background-color: inherit;
+}
+.tabs-button {
+	width: 47%;
+	border: none;
+	padding: 0px;
+	cursor: pointer;
+	vertical-align: middle;
+	user-select: none;
+	outline: none;
+}
+.tabs-button:active {
+	background-color: #bdbdbd;
+}
+.feed-JOIN {
+	color: green;
+	font-size: large;
+}
+.feed-JOIN::before {
+	content: "⇒";
+}
+.feed-PART {
+	color: red;
+	font-size: large;
+}
+.feed-PART::before {
+	content: "⇐";
+}
+.feed-entry-date {
+	margin-left: 5px;
+}
+#feed {
+	margin-bottom: 18px;
+}
+#stats {
+	margin-bottom: 18px;
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+}
+#stats-header {
+	width: 100%;
+}
+#loading-box {
+	height: 100%;
+	width: 100%;
+	text-align: center;
+}

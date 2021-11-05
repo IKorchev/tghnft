@@ -1,26 +1,32 @@
-import { ChainId, useEthers } from "@usedapp/core"
+import { ChainId, useEthers, useGasPrice } from "@usedapp/core"
 import { useEffect, useState } from "react"
 import ReactLoading from "react-loading"
 
 import { useTotalSupply, useContractMethod, useContractCost } from "../hooks"
+
 import MaticIcon from "../assets/nfts/matic-coin.svg"
 import AccountInfo from "./AccountInfo"
+import TransactionAlert from "./TransactionAlert"
 const Mint = () => {
   const [value, setValue] = useState(1)
   const { chainId } = useEthers()
-  const { state, send } = useContractMethod("mint")
+  const gas = useGasPrice()
   const { supply } = useTotalSupply()
-  const { cost } = useContractCost()
-
+  const { rawCost, formattedCost } = useContractCost()
+  const { state, send } = useContractMethod("mint", {})
+  useEffect(() => {
+    gas && console.log(gas + 10 ** 8)
+  }, [gas])
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault()
       }}
-      className=' flex flex-col text-center items-center mx-auto h-full justify-center border border-primary-yellow px-5 py-8 rounded-md shadow-2xl bg-card-gray min-w-[550px]'>
+      className='h-full flex flex-col text-center items-center  min-h-full justify-center px-5 py-8 rounded-md shadow-2xl bg-card-gray min-w-[550px]'>
       <h1 className='text-4xl mb-8'>Mint NFT</h1>
       <AccountInfo />
-      {chainId !== ChainId.Polygon ? (
+      {/* TODO: Change to Polygon */}
+      {chainId !== ChainId.Rinkeby ? (
         <h1 className='text-xl mt-12'>Please change network to Polygon to continue</h1>
       ) : (
         <div className='h-full w-70 text-black'>
@@ -29,7 +35,7 @@ const Mint = () => {
           </h1>
           <div className='flex flex-col my-2'>
             <label htmlFor='amount' className='text-white text-center text-lg mb-2'>
-              How many would you like to mint? {"(max 5)"}
+              How many would you like to mint? (max 5)
             </label>
             <div className='flex justify-center'>
               <select
@@ -46,20 +52,31 @@ const Mint = () => {
                 <option value='5'>5</option>
               </select>
               <span className='text-white px-5 text-xl flex items-center justify-center'>
-                {cost * value}
-                <img src={MaticIcon.src} className='h-5 w-5  ml-2  mr-4' alt='' />
-                <small className='flex justify-center text-sm'>(gas fees excluded)</small>
+                {formattedCost * value}
+                <img
+                  src={MaticIcon.src}
+                  className='h-5 w-5  ml-2  mr-4'
+                  alt='Polygon logo'
+                />
+                <small className='flex justify-center text-sm'>(excl. gas fees)</small>
               </span>
             </div>
           </div>
           <button
-            onClick={(e) => {
+            onClick={async (e) => {
               e.preventDefault()
-              send(value)
+              const total = rawCost * value
+              try {
+                send(value, {
+                  value: total.toString(),
+                })
+              } catch (err) {
+                console.error("there was an error" + err)
+              }
             }}
             disabled={state.status === "Mining"}
             type='submit'
-            className='h-full mt-2 w-full py-2 bg-gray-800 hover:bg-gray-900 transform duration-100 flex-grow text-primary-yellow font-semibold text-xl border border-primary-yellow rounded-md px-5'
+            className='mt-2 w-full py-2 bg-gray-800 hover:bg-gray-900 transform duration-100 flex-grow text-primary-yellow font-semibold text-xl border border-primary-yellow rounded-md px-5'
             placeholder='Image'>
             {state.status === "Mining" ? (
               <div className='flex justify-center '>
@@ -71,20 +88,7 @@ const Mint = () => {
           </button>
         </div>
       )}
-
-      {state.transaction?.hash && (
-        <div className='text-center mt-5 bg-green-500 rounded-lg border-green-900 border p-3 '>
-          <p>Thank you for minting!</p>
-          <a
-            href={`https://polygonscan.com/tx/${state.transaction.hash}`}
-            target='_blank'
-            rel='noreferrer'
-            className='underline hover:opacity-80'>
-            Click here
-          </a>{" "}
-          to see the status of your transaction.
-        </div>
-      )}
+      {state.transaction?.hash && <TransactionAlert state={state} />}
     </form>
   )
 }
